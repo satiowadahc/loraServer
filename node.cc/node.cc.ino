@@ -6,10 +6,17 @@
 
 #include <SPI.h>
 #include <RH_RF95.h>
-
+#include <Adafruit_PWMServoDriver.h>
 
 
 RH_RF95 rf95(8, 7);
+
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+uint8_t s1[3] = {115,49,0};
+uint8_t s2[3] = {115,50,0};
+#define SERVOMIN  150 // this is the 'minimum' pulse length count (out of 4096)
+#define SERVOMAX  450 // this is the 'maximum' pulse length count (out of 4096)
+int servoPosition = 1;
 
 int led =13;
 void setup() {
@@ -21,6 +28,9 @@ void setup() {
 //  while (!Serial) ; // Wait for serial port to be available
   if (!rf95.init())
     Serial.println("init failed");
+
+  pwm.begin();
+  pwm.setPWMFreq(60); 
 }
 
 void loop() {
@@ -39,9 +49,26 @@ void loop() {
     if (rf95.recv(buf, &len))
    {
       Serial.print("got reply: ");
-      Serial.println((char*)buf);
-    //      Serial.print("RSSI: ");
-    //      Serial.println(rf95.lastRssi(), DEC);    
+      Serial.println((char*)buf); 
+      if(buf[0]==s1[0] && buf[1]==s1[1] && servoPosition==2){
+        for(uint16_t i = SERVOMIN; i < SERVOMAX; i++){
+          pwm.setPWM(0,0,i);
+        }
+          servoPosition = 1;
+          uint8_t data[] = "Servo 1 Triggered";
+          rf95.send(data, sizeof(data));
+          rf95.waitPacketSent();
+      }
+      if(buf[0]==s2[0] && buf[1]==s2[1] && servoPosition==1){
+        for(uint16_t i = SERVOMAX; i > SERVOMIN; i--){
+          pwm.setPWM(0,0,i);
+        } 
+          servoPosition = 2;       
+          uint8_t data[] = "Servo 2 Triggered";
+          rf95.send(data, sizeof(data));
+          rf95.waitPacketSent();
+      }
+      
     }
     else
     {
@@ -52,5 +79,5 @@ void loop() {
   {
     Serial.println("No reply, is rf95_server running?");
   }
-  delay(2000);
+  delay(1000);
 }

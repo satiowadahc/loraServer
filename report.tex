@@ -11,7 +11,7 @@
 \maketitle
  Remote Watering Project
 \begin{abstract}
-	There is a need in rural Saskatchewan to monitor and control water supply systems from deep wells. This project explores the use of LoRa radios with the CoAP protocol not only to monitor water supplies, but also other remote applications such a environmental conditions in a barn, shop, or freezer. As this project is being submitted for CMPT 436, the hardware will be described in brief while focusing mainly on the protocols and software.
+	There is a need in rural Saskatchewan to monitor and control water supply systems from deep wells. This project explores the use of LoRa radios with the CoAP protocol not only to monitor water supplies, but also other remote applications such a environmental conditions in a barn, shop, or freezer. This is being modelled as a star point-endpoints, in future with more nodes, mesh networking may be incorporated. As this project is being submitted for CMPT 436, the hardware will be described in brief while focusing mainly on the protocols and software.
 \end{abstract}
 
 \section{Hardware}
@@ -25,27 +25,65 @@
 	
 	TODO: insert Diagram
 	
-\section{Signals}  
-	
-	This project packs data packets into 4 byte packets in the form aa00. 
+\section{Signals}	
+	This project packs data packets into 4 byte packets in the form aa00. Here the . are to denote the bytes.
 	
 	The first 2 bytes denote the data information:
 	\begin{itemize}
-		\item cc - Refers to connection packets, send, receive, acknowledge, error.
-		\item sa - Refers to sensor packets. 'a' is replace with a sensor type.
-		\item s0 - Refers to control packets. '0' is replace with a controller identifier
+		\item c.c - Connection packets 
+		\item s.t - Temperature sensor packets
+		\item s.h - Humidity sensor packets
+		\item s.f - Flow sensor packets
+		\item s.0 - Control "0" packets
+		
 	\end{itemize}	
-	The third byte is an id of the signal.
-	\begin{itemize}
-		\item 0 - only one sensor on this device
-		\item 1-9 - refers to sensor id, as this is intended for distant operation, few controls exist at the end points.
-	\end{itemize}
+	The third byte is an id of the signal. For example if there is more than 1 temperature sensor, this will distinguish between sensors and controls at the same node. This could be improved by changing them to a hexadecimal value for larger ranges.
+
+	\paragraph{}
 	The forth byte is the actual data.
 	\begin{itemize}
-		\item cc00 - The server has received a packet
-		\item c01 - The node has received a packet
-		\item cc03 - The data format was not recognized  
+		\item c.c.0.0  - Server acknowledge connection received
+		\item c.c.0.1  - Server acknowledge data received
+		\item c.c.0.2  - Redacted
+		\item c.c.0.3  - Bad request 
+		\item c.c.0.4  - Reset to initial settings and clear the node memory
+		\item s.t.0.22 - Temperature data, Sensor 0, 22degrees
+		\item s.1.0.1  - Control data, Control 1, Data specific to the control (turn on, activate)
+		\item s.1.0.2  - Control data, Control 1, Data specific to the control (turn off)
+		\item s.1.0.3-255 - Control data, Control 1, move to position
 	\end{itemize}
+
+\section{User Interface}
+	The Server node features a Touch Screen with both Sensor information and Controls.
 	
+	TODO insert diagram.
+	\begin{itemize}
+		\item Data from sensors
+		\item Buttons to send controls
+		\item Connection information
+		\item empty space to add elements for switch between nodes
+	\end{itemize}
+
+	The nodes save power by having no display. Some Micro Controllers can last for years off of a small battery using this method. To have a sense of feedback, The on board LED will flash varying intervals to indicate status.
+	\begin{itemize}
+		\item 3 quick blinks - error in function
+		\item 3 erratic blinks - error in transmission
+		\item 4 slow blinks - successful packet receive
+	\end{itemize}
+
+\section{Protocols}
+
+The original intention of this project was to analyze the CoAP protocols. However it seems the CoAP protocols have yet to make it to the realm of Arduino and LoRa. This project attempted at mimicking signals from CoAP on the RadioHead library. TODO INSERT LINK
+\paragraph{Packets}
+Each packet specified in this has: an 1 octet preamble, 4 octet Header with To, From, ID, Flags,0-251 octets data, and CRC checking that is handled by the hardware. From preamble, the data packets have been chosen to be 4 bytes as specified in signals. In particular GET and POST. 
+
+\paragraph{POST}
+The clients pushes data to the server when it is available. Each data packet with sensor information has been denoted with an "sa" character. s-Sensor a- can be replaced with the type of sensor. The full list is provided in sensors. The server can also push control signals with acknowledgement each of these is "s00" followed by a data. 00 refers to the control id. 
+
+\paragraph{GET}
+The only get requests currently are for connection tests and acknowledgement of packets received. As this is intended in rural Saskatchewan internet connectivity is not easily found there and thus most web page requests would be redundant with the on board displays.
+
+\section{Going Forward}
+Going forward as there is a lack of libraries available for CoAP on LoRa boards, I'm looking into writing these, either as an extension to RadioHead, or establishing a universal lightweight for P2P applications. This project will be fully installed into a functioning system in the spring time, with a high probability of expanding to multiple monitoring nodes across the farm.
 
 \end{document}          

@@ -1,0 +1,51 @@
+% !TeX spellcheck = en_CA
+\documentclass[]{report}
+
+
+% Title Page
+\title{Remote Water Monitor Project}
+\author{Chad A. Woitas}
+
+
+\begin{document}
+\maketitle
+ Remote Watering Project
+\begin{abstract}
+	There is a need in rural Saskatchewan to monitor and control water supply systems from deep wells. This project explores the use of LoRa radios with the CoAP protocol not only to monitor water supplies, but also other remote applications such a environmental conditions in a barn, shop, or freezer. As this project is being submitted for CMPT 436, the hardware will be described in brief while focusing mainly on the protocols and software.
+\end{abstract}
+
+\section{Hardware}
+	The project will use AdaFruit Feather 32u4 micro controllers. The feather was chosen for availability of stacking headers and on board options. Each controller has an on board 915 MHz radio with a 73mm 1/4 whip antenna. 
+	
+	On the Server board a TFT screen is attached for data display and user interaction. This was intended to be powered via a USB jack. A battery supply is possible, however due to the on board Display the battery life is limited to 12 hours with a 2000mAh 5V battery connected via Vbatt JST connector.
+	TODO: update battery life.
+	TODO: insert Diagram 
+	
+	On the node/client boards stacking headers can include servos, sensors, and relay boards. For initial testing sensors are connected to the main board, while control is maintained via a Pulse Width Modulation (PWM) header. 
+	
+	TODO: insert Diagram
+	
+\section{Signals}  
+	
+	This project packs data packets into 4 byte packets in the form aa00. 
+	
+	The first 2 bytes denote the data information:
+	\begin{itemize}
+		\item cc - Refers to connection packets, send, receive, acknowledge, error.
+		\item sa - Refers to sensor packets. 'a' is replace with a sensor type.
+		\item s0 - Refers to control packets. '0' is replace with a controller identifier
+	\end{itemize}	
+	The third byte is an id of the signal.
+	\begin{itemize}
+		\item 0 - only one sensor on this device
+		\item 1-9 - refers to sensor id, as this is intended for distant operation, few controls exist at the end points.
+	\end{itemize}
+	The forth byte is the actual data.
+	\begin{itemize}
+		\item cc00 - The server has received a packet
+		\item c01 - The node has received a packet
+		\item cc03 - The data format was not recognized  
+	\end{itemize}
+	
+
+\end{document}          

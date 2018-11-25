@@ -186,6 +186,7 @@ void loop() {
   delay(100);
   if(conFlag){
     conFlag = false;
+    count=0;
   }
   else{
     count++;

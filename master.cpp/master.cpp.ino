@@ -92,10 +92,10 @@ void loop() {
           tft.setCursor(260, 25);
           tft.println("T-");
           tft.fillRect(0,220,160,30,ILI9341_GREEN);
+          tft.setTextColor(ILI9341_BLACK); 
           tft.setTextSize(2);
           tft.setCursor(2,225);
           tft.print("T- Request Sent");
-          yield();
       }
       if(BOXSIZE < ry && ry < BOXSIZE*2){
         tft.fillRect(160, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
@@ -109,7 +109,6 @@ void loop() {
         tft.setTextSize(2);
         tft.setCursor(2,225);
         tft.print("T+ Request Sent");
-        yield();
       }
     }
   }
@@ -127,7 +126,6 @@ void loop() {
           tft.setCursor(2,5);
           tft.print("Well Temp: ");
           tft.println(buf[3]);
-          yield();
         } 
         //sh
         else if (buf[1] == 108){
@@ -135,7 +133,6 @@ void loop() {
           tft.setCursor(2,30);
           tft.print("Humidity: ");
           tft.println(buf[3]);
-          yield();
         }
         //sf
         else if (buf[1] == 102){
@@ -144,25 +141,22 @@ void loop() {
           tft.setCursor(2,55);
           tft.print("Flow: ");
           tft.println(buf[3]);
-          yield();
         }
         uint8_t data[] = "cc02";
         manager.sendtoWait(data, sizeof(data), from);
         tft.fillRect(0,220,160,30,ILI9341_GREEN);
         tft.setCursor(2,225);
         tft.print("Data RX");
-        yield();
         conFlag = true;
         count = 0;
       
       }//END DATA SWITCH
       else if(buf[0] == 99 && buf[1] == 99){
-        //c01 - Acknowledge Message received
+        //c01 - Send Connected with no data
         if(buf[2] == 48 && buf[2] == 49){
           tft.fillRect(0,220,160,30,ILI9341_GREEN);
           tft.setCursor(2,225);
           tft.print("Connected");
-          yield();
           conFlag = true;
           count = 0;
         }
@@ -179,11 +173,11 @@ void loop() {
    }
 
   if(count%20 == 1 && !conFlag){
+      setup();
       tft.fillRect(0,220,160,30,ILI9341_GREEN);
       tft.setCursor(2,225);
       tft.print("Timer:");
       tft.print(count-1);
-      yield();
   }
   conFlag = false;
   delay(500);

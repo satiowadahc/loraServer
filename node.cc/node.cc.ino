@@ -41,20 +41,32 @@ int servoPosition = 1;
 #define DHTTYPE DHT22
 DHT dht(18, DHTTYPE);
 
+#define FLOWPIN 19
+uint16_t pulses = 0;
+uint8_t lastflowpinstate;
+uint32_t lastflowratetimer= 0;
+float flowrate;
+
+
 int led =13;
 
 void setup() {
   Serial.begin(9600);
-  while(!Serial);
+//  while(!Serial);
   pinMode(led, OUTPUT); 
 //  if (!rf95.init())   Serial.println("Radio init failed");
   if(!manager.init()) Serial.println("Proto init failed");
   pwm.begin();
   pwm.setPWMFreq(60); 
   dht.begin();
+
+  pinMode(FLOWPIN, INPUT);
+  digitalWrite(FLOWPIN, HIGH);
+  lastflowpinstate = digitalRead(FLOWPIN);
 }
 
 void loop(){
+
 
   uint8_t len = sizeof(buf);
   uint8_t from; 
@@ -103,7 +115,22 @@ void loop(){
       Serial.println("No reply, is rf95_reliable_datagram_server running?");
     }    
   }
-  
+
+  char fdata = flowRate();
+  uint8_t sfdata[4] = {115, 102, 0, fdata};
+  if(manager.sendtoWait(sfdata, sizeof(sfdata), SERVER_ADDRESS)){
+    if (manager.recvfromAckTimeout(buf, &len, 2000, &from)){
+      Serial.print("Flow Sent: ");
+      Serial.println(fdata);
+      Serial.print("got reply from : 0x");
+      Serial.print(from, HEX);
+      Serial.print(": ");
+      Serial.println((char*)buf);
+    }
+    else{
+      Serial.println("No reply, is rf95_reliable_datagram_server running?");
+    }    
+  }
   //END DATA READINGS 
 
   if(manager.available()){
@@ -133,6 +160,23 @@ void loop(){
   delay(100); //for viewing purposes
 }// end loop
 
+
+int flowRate(){
+  uint8_t x = digitalRead(FLOWPIN);
+  if (x == lastflowpinstate) {
+    lastflowratetimer++;
+    return; // nothing changed!
+  }
+  if (x == HIGH) {
+    //low to high transition!
+    pulses++;
+  }
+  lastflowpinstate = x;
+  flowrate = 1000.0;
+  flowrate /= lastflowratetimer;  // in hertz 
+  lastflowratetimer = 0;
+  return flowRate;
+}
 
 void errorBlink(){
     digitalWrite(led,HIGH);

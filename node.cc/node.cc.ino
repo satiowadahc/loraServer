@@ -6,16 +6,6 @@
 
 // Monitor / Client NODE
 
-// TODO Count Delays
-
-// CURRENT SIGNALS
-
-// s0-s8 Servos Actuate
-// st - 115,116,0,READING
-// sh - 115,108,0,READING
-// sf - 115,106,0 TODO
-// c00 - ack recieved
-// c01 - ack send
 
 #include <SPI.h>
 #include <RHReliableDatagram.h>
@@ -31,15 +21,16 @@ uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
 
 // Controls ----------------------------------------------
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
-uint8_t s1[3] = {115, 49, 0}; //s1
-uint8_t s2[3] = {115, 50, 0}; //s2
-#define SERVOMIN  150 // tune
-#define SERVOMAX  450 // tune
+#define SERVOMIN  100 // tune
+#define SERVOMAX  400 // tune
 int servoPosition = 1;
 
 // Sensors  ----------------------------------------------
 #define DHTTYPE DHT22
 DHT dht(18, DHTTYPE);
+int lasthumid = 0;
+int lasttemp = 0;
+
 
 #define FLOWPIN 19
 uint16_t pulses = 0;
@@ -52,12 +43,11 @@ int led =13;
 
 void setup() {
   Serial.begin(9600);
-//  while(!Serial);
   pinMode(led, OUTPUT); 
 //  if (!rf95.init())   Serial.println("Radio init failed");
   if(!manager.init()) Serial.println("Proto init failed");
   pwm.begin();
-  pwm.setPWMFreq(60); 
+  pwm.setPWMFreq(40); 
   dht.begin();
 
   pinMode(FLOWPIN, INPUT);
@@ -72,18 +62,45 @@ void loop(){
   uint8_t from; 
 
   //Ack Packets
-  uint8_t ack[] = "c01";
-  manager.sendtoWait(ack, sizeof(ack), SERVER_ADDRESS);
+  uint8_t ack[] = {99,99,48,49};
+  if(manager.sendtoWait(ack, sizeof(ack), SERVER_ADDRESS)){
+      Serial.print("Sent Ack: ");
+      Serial.print((char) ack[0]);
+      Serial.print((char) ack[1]);
+      Serial.print((char) ack[2]);
+      Serial.println((char) ack[3]);
+    if (manager.recvfromAckTimeout(buf, &len, 2000, &from)){
+      Serial.print("got reply from : 0x");
+      Serial.print(from, HEX);
+      Serial.print(": ");
+      Serial.println((char*)buf);
+      controls(buf);
+    }
+  }
   //End Ack Packets
 
   //Data Readings
   int humid = dht.readHumidity();
   int temp = dht.readTemperature();
-  
+ 
   if (isnan(humid) || isnan(temp)) {
-   Serial.println("Failed to read from DHT sensor!");
+        uint8_t data[] = "cc04"; 
+    if(manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS)){
+      Serial.print("Bad Reading");
+      if (manager.recvfromAckTimeout(buf, &len, 2000, &from)){
+        Serial.print("got reply from : 0x");
+        Serial.print(from, HEX);
+        Serial.print(": ");
+        Serial.println((char*)buf);
+        controls(buf);
+      }
+      else{
+        Serial.println("No reply, is the server running?");
+      }
+    }
   }
   
+  if(temp != lasttemp){
   char tdata = temp;
   uint8_t stdata[4] = {115, 116, 0, tdata}; 
   if(manager.sendtoWait(stdata, sizeof(stdata), SERVER_ADDRESS)){
@@ -94,12 +111,16 @@ void loop(){
       Serial.print(from, HEX);
       Serial.print(": ");
       Serial.println((char*)buf);
+      controls(buf);
     }
     else{
-      Serial.println("No reply, is rf95_reliable_datagram_server running?");
+      Serial.println("No reply, is the server running?");
     }
   }
-  
+  lasttemp = temp;
+  }
+
+  if(humid != lasthumid){
   char hdata = humid;
   uint8_t shdata[4] = {115, 108, 0, hdata};
   if(manager.sendtoWait(shdata, sizeof(shdata), SERVER_ADDRESS)){
@@ -110,11 +131,15 @@ void loop(){
       Serial.print(from, HEX);
       Serial.print(": ");
       Serial.println((char*)buf);
+      controls(buf);
     }
     else{
-      Serial.println("No reply, is rf95_reliable_datagram_server running?");
+      Serial.println("No reply, is the server running?");
     }    
   }
+  lasthumid = humid;
+  }
+  
 
   char fdata = flowRate();
   uint8_t sfdata[4] = {115, 102, 0, fdata};
@@ -126,40 +151,54 @@ void loop(){
       Serial.print(from, HEX);
       Serial.print(": ");
       Serial.println((char*)buf);
+      controls(buf);
     }
     else{
-      Serial.println("No reply, is rf95_reliable_datagram_server running?");
-    }    
+      Serial.println("No reply, is the server running?");
+    }
+        
   }
   //END DATA READINGS 
-
-  if(manager.available()){
-  if(manager.recvfromAckTimeout(buf, &len, 3000, &from)){ 
-      Serial.print("got reply: ");
-      Serial.println((char*)buf);
-      signalBlink(3); 
-      if(buf[0]==s1[0] && buf[1]==s1[1] && servoPosition==2){
-        for(uint16_t i = SERVOMIN; i < SERVOMAX; i++){
-          pwm.setPWM(0,0,i);
-        }
-          servoPosition = 1;
-          uint8_t data[] = "s001";
-          manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS);
-      }
-      if(buf[0]==s2[0] && buf[1]==s2[1] && servoPosition==1){
-        for(uint16_t i = SERVOMAX; i > SERVOMIN; i--){
-          pwm.setPWM(0,0,i);
-        } 
-          servoPosition = 2;       
-          uint8_t data[] = "s002";
-          manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS);
-      }
-    }
-  }
   
-  delay(100); //for viewing purposes
+  delay(500); //for viewing purposes
 }// end loop
 
+void controls(uint8_t buf[]){
+    //Controls S0-9
+    if(buf[0]==115 && (0<=buf[1]<=10)){
+        if(buf[3]==49){
+          Serial.println("Servo+");
+            for (uint16_t pulselen = SERVOMIN; pulselen < SERVOMAX; pulselen++) {
+              pwm.setPWM(buf[1], 0, pulselen);
+            }
+        }
+        else if(buf[3]==50){
+          Serial.println("Servo-");
+            for (uint16_t pulselen = SERVOMAX; pulselen > SERVOMIN; pulselen--) {
+              pwm.setPWM(buf[1], 0, pulselen);
+            }
+        }
+        else{
+          pwm.setPWM(0,0,map(buf[3], 1,255, SERVOMIN, SERVOMAX)); 
+        }
+        char dev = buf[1];
+        char pos = buf[3];
+        //CNXX
+        uint8_t data[4] = {99, 110, dev, pos}; 
+        if(manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS)){
+          Serial.print("Servo");
+          Serial.print(buf[1]);
+          Serial.print("Moved To");
+          Serial.println(buf[3]);
+        }
+        else{
+          Serial.println("No reply, is the server running?");
+        }
+    }
+    if(buf[0]==115 && buf[1]==49 && buf[1]==48 && buf[1]==49){
+      setup();
+    }
+}
 
 int flowRate(){
   uint8_t x = digitalRead(FLOWPIN);

@@ -1,6 +1,7 @@
 % !TeX spellcheck = en_CA
 \documentclass[]{report}
-
+\usepackage{graphicx}
+\graphicspath{ {../Report/} }
 
 % Title Page
 \title{Remote Water Monitor Project}
@@ -15,22 +16,25 @@
 \end{abstract}
 
 \section{Hardware}
-	The project will use AdaFruit Feather 32u4 micro controllers. The feather was chosen for availability of stacking headers and on board options. Each controller has an on board 915 MHz radio with a 73mm 1/4 whip antenna. 
+	The project is prototyped on the AdaFruit Feather 32u4 micro controllers. The feather was chosen for availability of stacking headers and on board options. Each controller has an on board 915 MHz radio with a 73mm 1/4 whip antenna. 
 	
-	On the Server board a TFT screen is attached for data display and user interaction. This was intended to be powered via a USB jack. A battery supply is possible, however due to the on board Display the battery life is limited to 12 hours with a 2000mAh 5V battery connected via Vbatt JST connector.
-	TODO: update battery life.
-	TODO: insert Diagram 
+	\paragraph{Server}
+	On the Server board a TFT screen is attached for data display and user interaction. This was intended to be powered via a USB jack. A battery supply is possible, however due to the on board Display the battery life is limited to 12 hours with a 2000mAh usb battery.
 	
-	On the node/client boards stacking headers can include servos, sensors, and relay boards. For initial testing sensors are connected to the main board, while control is maintained via a Pulse Width Modulation (PWM) header. 
+	\includegraphics{ui}
+	Interface on the server
+	\paragraph{Client}
+	On the node/client boards stacking headers can include servos, sensors, and relay boards. For initial testing sensors are connected to the main board, while control is maintained via a Pulse Width Modulation (PWM) header. For this prototype, one environment sensor, one flow sensor, and one control servo are attached. Battery life has yet to be determined. 
 	
-	TODO: insert Diagram
+	
 	
 \section{Signals}	
 	This project packs data packets into 4 byte packets in the form aa00. Here the . are to denote the bytes.
 	
 	The first 2 bytes denote the data information:
 	\begin{itemize}
-		\item c.c - Connection packets 
+		\item c.c - Connection packets
+		\item c.n - Node connection packets
 		\item s.t - Temperature sensor packets
 		\item s.h - Humidity sensor packets
 		\item s.f - Flow sensor packets
@@ -47,6 +51,7 @@
 		\item c.c.0.2  - Redacted
 		\item c.c.0.3  - Bad request 
 		\item c.c.0.4  - Reset to initial settings and clear the node memory
+		\item c.n.0.1  - Sensor 0 moved to position 1
 		\item s.t.0.22 - Temperature data, Sensor 0, 22degrees
 		\item s.1.0.1  - Control data, Control 1, Data specific to the control (turn on, activate)
 		\item s.1.0.2  - Control data, Control 1, Data specific to the control (turn off)
@@ -56,7 +61,7 @@
 \section{User Interface}
 	The Server node features a Touch Screen with both Sensor information and Controls.
 	
-	TODO insert diagram.
+	\includegraphics{ui}
 	\begin{itemize}
 		\item Data from sensors
 		\item Buttons to send controls
